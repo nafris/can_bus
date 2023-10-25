@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
+#include "esp_timer.h"
 #define spi_readwrite mcpSPI->transfer
 #define spi_read() spi_readwrite(0x00)
 
@@ -188,7 +189,7 @@ INT8U MCP_CAN::mcp2515_setCANCTRL_Mode(const INT8U newmode)
 *********************************************************************************************************/
 INT8U MCP_CAN::mcp2515_requestNewMode(const INT8U newmode)
 {
-	uint8_t startTime = millis();
+    uint8_t startTime = esp_timer_get_time() / 1000; //this originally used millis()
 
 	// Spam new mode request and wait for the operation  to complete
 	while(1)
@@ -200,7 +201,7 @@ INT8U MCP_CAN::mcp2515_requestNewMode(const INT8U newmode)
 		uint8_t statReg = mcp2515_readRegister(MCP_CANSTAT);
 		if((statReg & MODE_MASK) == newmode) // We're now in the new mode
 			return MCP2515_OK;
-		else if((uint8_t)(millis() - startTime) > 200) // Wait no more than 200ms for the operation to complete
+		else if((uint8_t)(esp_timer_get_time() / 1000 - startTime) > 200) // Wait no more than 200ms for the operation to complete --> this originally used millis()
 			return MCP2515_FAIL;
 	}
 }
@@ -1090,11 +1091,11 @@ INT8U MCP_CAN::sendMsg()
     INT8U res, res1, txbuf_n;
     uint32_t uiTimeOut, temp;
 
-    temp = micros();
+    temp = esp_timer_get_time();
     // 24 * 4 microseconds typical
     do {
         res = mcp2515_getNextFreeTXBuf(&txbuf_n);                       /* info = addr.                 */
-        uiTimeOut = micros() - temp;
+        uiTimeOut = esp_timer_get_time() - temp;
     } while (res == MCP_ALLTXBUSY && (uiTimeOut < TIMEOUTVALUE));
 
     if(uiTimeOut >= TIMEOUTVALUE) 
@@ -1105,12 +1106,12 @@ INT8U MCP_CAN::sendMsg()
     mcp2515_write_canMsg( txbuf_n);
     mcp2515_modifyRegister( txbuf_n-1 , MCP_TXB_TXREQ_M, MCP_TXB_TXREQ_M );
     
-    temp = micros();
+    temp = esp_timer_get_time();
     do
     {       
         res1 = mcp2515_readRegister(txbuf_n-1);                         /* read send buff ctrl reg 	*/
         res1 = res1 & 0x08;
-        uiTimeOut = micros() - temp;
+        uiTimeOut = esp_timer_get_time() - temp;
     } while (res1 && (uiTimeOut < TIMEOUTVALUE));   
     
     if(uiTimeOut >= TIMEOUTVALUE)                                       /* send msg timeout             */	
