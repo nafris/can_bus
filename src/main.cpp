@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <mcp_can.h>
-#include <mcp_can_dfs.h>
+//#include <mcp_can.h>
+//#include <mcp_can_dfs.h>
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -19,7 +19,7 @@ gpio_num_t SPI_SCK = GPIO_NUM_17;
 gpio_num_t SPI_MISO = GPIO_NUM_16;
 gpio_num_t SPI_MOSI = GPIO_NUM_15;
 
-MCP_CAN CAN0(CAN0_CS); 
+//MCP_CAN CAN0(CAN0_CS); 
 
 extern "C"{
     void app_main();
@@ -45,10 +45,17 @@ void app_main() {
     ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
     //SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, CAN0_CS);
     ESP_ERROR_CHECK(ret);
-    
     spi_device_interface_config_t devcfg={
-        
+        .command_bits = NULL,
+        .address_bits = NULL,
+        .dummy_bits = NULL,
         .mode = 0,                  //SPI mode 0
+        .clock_source = SPI_CLK_SRC_DEFAULT,
+        .duty_cycle_pos = NULL,
+        .cs_ena_pretrans = NULL,
+        .cs_ena_posttrans = NULL,
+        .clock_speed_hz = 1000000,  // 8 MHz
+        .input_delay_ns = NULL,
         .spics_io_num = CAN0_CS,
         .flags = SPI_DEVICE_HALFDUPLEX,
              
@@ -56,12 +63,16 @@ void app_main() {
         
         .pre_cb = NULL,
         .post_cb = NULL,
-        //.clock_speed_hz = 1000000,  // 1 MHz
     };
 
     ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi2));
+printf("MCP2515 Library Receive Example...\n");
+    while(1){
+printf("MCP2515 Library Receive Example...\n");
 
+    }
 
+    /*
       // Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
     if(CAN0.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
         printf("MCP2515 initialization successful! \n");
@@ -88,5 +99,5 @@ void app_main() {
             }
         }        
         printf("\n");
-    }
+    }*/
 }

@@ -20,9 +20,9 @@ class MCP_CAN
     INT8U   mcpMode;                                                    // Mode to return to after configurations are performed.
     
 
-/*********************************************************************************************************
- *  mcp2515 driver function 
- *********************************************************************************************************/
+//...............................................
+//  mcp2515 driver function 
+//.............................................
    // private:
    private:
 
@@ -74,9 +74,9 @@ class MCP_CAN
     void mcp2515_read_canMsg( const INT8U buffer_sidh_addr);            // Read CAN message
     INT8U mcp2515_getNextFreeTXBuf(INT8U *txbuf_n);                     // Find empty transmit buffer
 
-/*********************************************************************************************************
- *  CAN operator function
- *********************************************************************************************************/
+//.....................................................................
+//   CAN operator function
+ //....................................................................
 
     INT8U setMsg(INT32U id, INT8U rtr, INT8U ext, INT8U len, INT8U *pData);        // Set message
     INT8U clearMsg();                                                   // Clear all message to zero
