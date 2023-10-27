@@ -1,7 +1,9 @@
+
 #ifndef _MCP2515_H_
 #define _MCP2515_H_
-
+#include "driver/spi_master.h"
 #include "mcp_can_dfs.h"
+#include "driver/gpio.h"
 #define MAX_CHAR_IN_MESSAGE 8
 
 class MCP_CAN
@@ -15,7 +17,8 @@ class MCP_CAN
     INT8U   m_nDta[MAX_CHAR_IN_MESSAGE];                                // Data array
     INT8U   m_nRtr;                                                     // Remote request flag
     INT8U   m_nfilhit;                                                  // The number of the filter that matched the message
-    SPIClass *mcpSPI;                                                       // The SPI-Device used
+    spi_device_handle_t *mcpSPI;                                                       // The SPI-Device used
+    //the above used to be SPIclass in arduino code
     gpio_num_t   MCPCS;                                                      // Chip Select pin number
     INT8U   mcpMode;                                                    // Mode to return to after configurations are performed.
     
@@ -84,8 +87,8 @@ class MCP_CAN
     INT8U sendMsg();                                                    // Send message
 
 public:
-    MCP_CAN(gpio_num_t _CS);
-    MCP_CAN(SPIClass *_SPI, gpio_num_t _CS);
+    //MCP_CAN(gpio_num_t _CS);  <--- not supporting this constructor
+    MCP_CAN(spi_device_handle_t *_SPI, gpio_num_t _CS);
     INT8U begin(INT8U idmodeset, INT8U speedset, INT8U clockset);       // Initialize controller parameters
     INT8U init_Mask(INT8U num, INT8U ext, INT32U ulData);               // Initialize Mask(s)
     INT8U init_Mask(INT8U num, INT32U ulData);                          // Initialize Mask(s)

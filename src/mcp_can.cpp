@@ -791,19 +791,19 @@ INT8U MCP_CAN::mcp2515_getNextFreeTXBuf(INT8U *txbuf_n)                 /* get N
 ** Function name:           MCP_CAN
 ** Descriptions:            Public function to declare CAN class and the /CS pin.
 *********************************************************************************************************/
-MCP_CAN::MCP_CAN(gpio_num_t _CS)
-{
-    MCPCS = _CS;
-    MCP2515_UNSELECT();
-    gpio_set_direction(MCPCS, GPIO_MODE_OUTPUT);
-    mcpSPI = &SPI;
-}
+//MCP_CAN::MCP_CAN(gpio_num_t _CS)
+//{
+//    MCPCS = _CS;
+//    MCP2515_UNSELECT();
+//    gpio_set_direction(MCPCS, GPIO_MODE_OUTPUT);
+//    mcpSPI = &SPI;
+//}
 
 /*********************************************************************************************************
 ** Function name:           MCP_CAN
 ** Descriptions:            Public function to declare CAN class with SPI and the /CS pin.
 *********************************************************************************************************/
-MCP_CAN::MCP_CAN(SPIClass *_SPI, gpio_num_t _CS)
+MCP_CAN::MCP_CAN(spi_device_handle_t *_SPI, gpio_num_t _CS)
 {
     MCPCS = _CS;
     MCP2515_UNSELECT();

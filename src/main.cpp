@@ -66,10 +66,11 @@ void app_main() {
     };
 
     ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi2));
-printf("MCP2515 Library Receive Example...\n");
+    printf("MCP2515 Library Receive Example...\n");
     while(1){
-printf("MCP2515 Library Receive Example...\n");
-
+    printf("MCP2515 Library Receive Example...\n");
+    vTaskDelay((TickType_t)100);
+    
     }
 
     /*
