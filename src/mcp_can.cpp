@@ -1,4 +1,3 @@
-
 #include "mcp_can.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -47,16 +46,29 @@ INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)
         .tx_buffer = tx_data,
     };
     ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
+    //spi_readwrite(address);
     tx_data[1] = address;
     t = {
         .length = 8,
         .tx_buffer = tx_data,
     };
     ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
-    //spi_readwrite(address);
+    
 
 
-    ret = spi_read();
+    //ret = spi_read();
+    uint8_t rx_data[1];
+    t = {
+        //.cmd =  readaddr, writeaddr?
+        .length = 8,
+        .rxlength = 8,
+        .flags = SPI_TRANS_USE_RXDATA,
+        .rx_buffer = rx_data,
+    }
+    ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
+    ret = rx_data[1];
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
     //MCP2515_UNSELECT();
     //mcpSPI->endTransaction();
 
@@ -86,9 +98,19 @@ void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const I
         .tx_buffer = tx_data,
     };
     // mcp2515 has auto-increment of address-pointer
-    for (i=0; i<n; i++) 
-        values[i] = spi_read();
-
+    uint8_t rx_data[1];
+    for (i = 0; i < n; i++){ 
+        //values[i] = spi_read();
+        t = {
+            //.cmd =  readaddr, writeaddr?
+            .length = 8,
+            .rxlength = 8,
+            .flags = SPI_TRANS_USE_RXDATA,
+            .rx_buffer = rx_data,
+        }
+        ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
+        values[i] = rx_data[1];        
+    }
     //MCP2515_UNSELECT();
     //mcpSPI->endTransaction();
 }
@@ -211,7 +233,17 @@ INT8U MCP_CAN::mcp2515_readStatus(void)
         .length = 8,
         .tx_buffer = tx_data,
     };        
-    i = spi_read();
+    //i = spi_read();
+    uint8_t rx_data[1];
+    t = {
+        //.cmd =  readaddr, writeaddr?
+        .length = 8,
+        .rxlength = 8,
+        .flags = SPI_TRANS_USE_RXDATA,
+        .rx_buffer = rx_data,
+    }
+    ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
+    i = rx_data[1];    
     //MCP2515_UNSELECT();
     //mcpSPI->endTransaction();
     return i;
