@@ -1,6 +1,6 @@
 #include <stdio.h>
-//#include <mcp_can.h>
-//#include <mcp_can_dfs.h>
+#include <mcp_can.h>
+#include <mcp_can_dfs.h>
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -19,7 +19,7 @@ gpio_num_t SPI_SCK = GPIO_NUM_17;
 gpio_num_t SPI_MISO = GPIO_NUM_16;
 gpio_num_t SPI_MOSI = GPIO_NUM_15;
 
-//MCP_CAN CAN0(CAN0_CS); 
+MCP_CAN CAN0(&spi2, CAN0_CS); 
 
 extern "C"{
     void app_main();
@@ -27,12 +27,20 @@ extern "C"{
 void app_main() {
     
     printf("Can bus project...\n");
-    gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO_NUM_15, 0);
-    vTaskDelay((TickType_t)30000);
-    gpio_set_level(GPIO_NUM_15, 1);
+    
+    //resetting MCP with a 1second pulse
+    //don't have hardware support for this yet
+    //gpio_set_direction(CAN0_INT, GPIO_MODE_OUTPUT);
+    //gpio_set_level(GPIO_NUM_15, 0);
+    //vTaskDelay((TickType_t)30000);
+    //gpio_set_level(GPIO_NUM_15, 1);
     
 
+    //spi settings should double this:
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //frequency = 1MHz x
+    //dataOrder = MSBFIRST x
+    ///datamode = SPI_MODE0 x
     spi_bus_config_t buscfg={
         .mosi_io_num = SPI_MOSI,
         .miso_io_num = SPI_MISO,
@@ -43,29 +51,29 @@ void app_main() {
     };
     esp_err_t ret;
     ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    
     //SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, CAN0_CS);
     ESP_ERROR_CHECK(ret);
     spi_device_interface_config_t devcfg={
-        .command_bits = NULL,
-        .address_bits = NULL,
-        .dummy_bits = NULL,
+        //.command_bits = NULL,
+        //.address_bits = NULL,
+        //.dummy_bits = NULL,
         .mode = 0,                  //SPI mode 0
-        .clock_source = SPI_CLK_SRC_DEFAULT,
-        .duty_cycle_pos = NULL,
-        .cs_ena_pretrans = NULL,
-        .cs_ena_posttrans = NULL,
-        .clock_speed_hz = 1000000,  // 8 MHz
-        .input_delay_ns = NULL,
+        //.clock_source = SPI_CLK_SRC_DEFAULT,
+        //.duty_cycle_pos = NULL,
+        //.cs_ena_pretrans = NULL,
+        //.cs_ena_posttrans = NULL,
+        .clock_speed_hz = 1000000,  // 1 MHz
+        //.input_delay_ns = NULL,
         .spics_io_num = CAN0_CS,
-        .flags = SPI_DEVICE_HALFDUPLEX,
-             
+        //.flags = SPI_DEVICE_HALFDUPLEX,
         .queue_size = 1,
-        
         .pre_cb = NULL,
         .post_cb = NULL,
     };
 
     ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi2));
+    
     printf("MCP2515 Library Receive Example...\n");
     while(1){
     printf("MCP2515 Library Receive Example...\n");

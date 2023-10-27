@@ -4,6 +4,8 @@
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
+#include "esp_log.h"
+#include "esp_err.h"
 #define spi_readwrite mcpSPI->transfer
 #define spi_read() spi_readwrite(0x00)
 
@@ -13,11 +15,18 @@
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_reset(void)                                      
 {
-    mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-    MCP2515_SELECT();
-    spi_readwrite(MCP_RESET);
-    MCP2515_UNSELECT();
-    mcpSPI->endTransaction();
+    uint8_t tx_data[1];
+    tx_data[1] = MCP_RESET;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };
+    ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //MCP2515_SELECT();
+    //spi_readwrite(MCP_RESET);
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
     vTaskDelay((TickType_t)5);  // If the MCP2515 was in sleep mode when the reset command was issued then we need to wait a while for it to reset properly
 }
 
@@ -28,14 +37,28 @@ void MCP_CAN::mcp2515_reset(void)
 INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)                                                                     
 {
     INT8U ret;
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //MCP2515_SELECT();
+    //spi_readwrite(MCP_READ);    
+    uint8_t tx_data[1];
+    tx_data[1] = MCP_READ;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };
+    ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
+    tx_data[1] = address;
+    t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };
+    ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));
+    //spi_readwrite(address);
 
-    mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-    MCP2515_SELECT();
-    spi_readwrite(MCP_READ);
-    spi_readwrite(address);
+
     ret = spi_read();
-    MCP2515_UNSELECT();
-    mcpSPI->endTransaction();
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
 
     return ret;
 }
@@ -47,16 +70,27 @@ INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)
 void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const INT8U n)
 {
     INT8U i;
-    mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-    MCP2515_SELECT();
-    spi_readwrite(MCP_READ);
-    spi_readwrite(address);
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //MCP2515_SELECT();
+    //spi_readwrite(MCP_READ);
+    uint8_t tx_data[1];
+    tx_data[1] = MCP_READ;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };
+    //spi_readwrite(address);
+    tx_data[1] = address;
+    t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };
     // mcp2515 has auto-increment of address-pointer
     for (i=0; i<n; i++) 
         values[i] = spi_read();
 
-    MCP2515_UNSELECT();
-    mcpSPI->endTransaction();
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
 }
 
 /*********************************************************************************************************
@@ -65,13 +99,30 @@ void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const I
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 {
-    mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-    MCP2515_SELECT();
-    spi_readwrite(MCP_WRITE);
-    spi_readwrite(address);
-    spi_readwrite(value);
-    MCP2515_UNSELECT();
-    mcpSPI->endTransaction();
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //MCP2515_SELECT();
+    //spi_readwrite(MCP_WRITE);
+    uint8_t tx_data[1];
+    tx_data[1] = MCP_WRITE;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };
+    ESP_ERROR_CHECK(spi_device_polling_transmit(*mcpSPI, &t));    
+    //spi_readwrite(address);
+    tx_data[1] = address;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };
+    //spi_readwrite(value);
+    tx_data[1] = value;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };    
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
 }
 
 /*********************************************************************************************************
@@ -81,16 +132,30 @@ void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 void MCP_CAN::mcp2515_setRegisterS(const INT8U address, const INT8U values[], const INT8U n)
 {
     INT8U i;
-    mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-    MCP2515_SELECT();
-    spi_readwrite(MCP_WRITE);
-    spi_readwrite(address);
-       
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //MCP2515_SELECT();
+    //spi_readwrite(MCP_WRITE);
+    uint8_t tx_data[1];
+    tx_data[1] = MCP_WRITE;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };        
+    //spi_readwrite(address);
+    tx_data[1] = address;
+    t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };               
     for (i=0; i<n; i++) 
-        spi_readwrite(values[i]);
-	
-    MCP2515_UNSELECT();
-    mcpSPI->endTransaction();
+        //spi_readwrite(values[i]);
+        tx_data[1] = values[i];
+        t = {
+            .length = 8,
+            .tx_buffer = tx_data,
+        }
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
 }
 
 /*********************************************************************************************************
@@ -99,14 +164,35 @@ void MCP_CAN::mcp2515_setRegisterS(const INT8U address, const INT8U values[], co
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, const INT8U data)
 {
-    mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-    MCP2515_SELECT();
-    spi_readwrite(MCP_BITMOD);
-    spi_readwrite(address);
-    spi_readwrite(mask);
-    spi_readwrite(data);
-    MCP2515_UNSELECT();
-    mcpSPI->endTransaction();
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //MCP2515_SELECT();
+    //spi_readwrite(MCP_BITMOD);
+    uint8_t tx_data[1];
+    tx_data[1] = MCP_BITMOD;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };    
+    //spi_readwrite(address);
+    tx_data[1] = address;
+    t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };    
+    //spi_readwrite(mask);
+    tx_data[1] = mask;
+    t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };    
+    //spi_readwrite(data);
+    tx_data[1] = data;
+    t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };    
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
 }
 
 /*********************************************************************************************************
@@ -116,12 +202,18 @@ void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, cons
 INT8U MCP_CAN::mcp2515_readStatus(void)                             
 {
     INT8U i;
-    mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    //mcpSPI->beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
     MCP2515_SELECT();
-    spi_readwrite(MCP_READ_STATUS);
+    //spi_readwrite(MCP_READ_STATUS);
+    uint8_t tx_data[1];
+    tx_data[1] = MCP_READ_STATUS;
+    spi_transaction_t t = {
+        .length = 8,
+        .tx_buffer = tx_data,
+    };        
     i = spi_read();
-    MCP2515_UNSELECT();
-    mcpSPI->endTransaction();
+    //MCP2515_UNSELECT();
+    //mcpSPI->endTransaction();
     return i;
 }
 
