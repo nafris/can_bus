@@ -1,21 +1,20 @@
 #include <string.h>
 #include "mcp_can.h"
-#include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/gpio.h"
 #include "esp_timer.h"
-#include "esp_log.h"
 #include "esp_err.h"
-//#define spi_readwrite mcpSPI->transfer
-//#define spi_read() spi_readwrite(0x00)
-
+#define CS_DOWN gpio_set_level(MCPCS, 0);
+#define CS_UP gpio_set_level(MCPCS, 1);
 
 void spi_tx(INT8U data, spi_device_handle_t *spi){  
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
     t.length = 8;
     t.tx_buffer = &data;
-    ESP_ERROR_CHECK(spi_device_polling_transmit(*spi, &t));    
+    if(spi_device_polling_transmit(*spi, &t) != ESP_OK){
+        printf("SPI TX failed...\n");
+    }
+    //spi_device_polling_transmit(*spi, &t);
 }
 INT8U spi_rx(spi_device_handle_t *spi){
     spi_transaction_t t;
@@ -25,10 +24,12 @@ INT8U spi_rx(spi_device_handle_t *spi){
     t.length = 8;
     t.rxlength = 8;
     t.rx_buffer = &rx_data;
-    ESP_ERROR_CHECK(spi_device_polling_transmit(*spi, &t));
+    if(spi_device_polling_transmit(*spi, &t) != ESP_OK){
+        printf("SPI RX failed...\n");
+    }
+    //spi_device_polling_transmit(*spi, &t);
     return rx_data;
 }
-
 
 /*********************************************************************************************************
 ** Function name:           mcp2515_reset
@@ -36,8 +37,10 @@ INT8U spi_rx(spi_device_handle_t *spi){
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_reset(void)                                      
 {
-    spi_tx(MCP_RESET, mcpSPI);  
-    vTaskDelay((TickType_t)5);  // If the MCP2515 was in sleep mode when the reset command was issued then we need to wait a while for it to reset properly
+    CS_DOWN;
+    spi_tx(MCP_RESET, mcpSPI);
+    vTaskDelay(5); // If the MCP2515 was in sleep mode when the reset command was issued then we need to wait a while for it to reset properly
+    CS_UP;
 }
 
 /*********************************************************************************************************
@@ -47,9 +50,11 @@ void MCP_CAN::mcp2515_reset(void)
 INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)                                                                     
 {
     INT8U ret;
+    CS_DOWN;
     spi_tx(MCP_READ, mcpSPI);
     spi_tx(address, mcpSPI);
     ret = spi_rx(mcpSPI);
+    CS_UP;
     return ret;
 }
 
@@ -60,12 +65,14 @@ INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)
 void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const INT8U n)
 {
     INT8U i;
+    CS_DOWN;
     spi_tx(MCP_READ, mcpSPI);
     spi_tx(address, mcpSPI);
     // mcp2515 has auto-increment of address-pointer
-    for (i = 0; i < n; i++){ 
+    for (i=0; i<n; i++){ 
         values[i] = spi_rx(mcpSPI);
     }
+    CS_UP;
 }
 
 /*********************************************************************************************************
@@ -74,9 +81,11 @@ void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const I
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 {
+    CS_DOWN;
     spi_tx(MCP_WRITE, mcpSPI);
     spi_tx(address, mcpSPI);
     spi_tx(value, mcpSPI);
+    CS_UP;
 }
 
 /*********************************************************************************************************
@@ -86,11 +95,13 @@ void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 void MCP_CAN::mcp2515_setRegisterS(const INT8U address, const INT8U values[], const INT8U n)
 {
     INT8U i;
+    CS_DOWN;
     spi_tx(MCP_WRITE, mcpSPI);
-    spi_tx(address, mcpSPI);
-    for (i = 0; i < n; i++){ 
+    spi_tx(address, mcpSPI);   
+    for (i=0; i<n; i++){
         spi_tx(values[i], mcpSPI);
-    }
+    } 
+    CS_UP;
 }
 
 /*********************************************************************************************************
@@ -99,10 +110,12 @@ void MCP_CAN::mcp2515_setRegisterS(const INT8U address, const INT8U values[], co
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, const INT8U data)
 {
+    CS_DOWN;
     spi_tx(MCP_BITMOD, mcpSPI);
     spi_tx(address, mcpSPI);
     spi_tx(mask, mcpSPI);
     spi_tx(data, mcpSPI);
+    CS_UP;
 }
 
 /*********************************************************************************************************
@@ -112,8 +125,10 @@ void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, cons
 INT8U MCP_CAN::mcp2515_readStatus(void)                             
 {
     INT8U i;
+    CS_DOWN;
     spi_tx(MCP_READ_STATUS, mcpSPI);
     i = spi_rx(mcpSPI);
+    CS_UP;
     return i;
 }
 
@@ -147,8 +162,9 @@ INT8U MCP_CAN::mcp2515_setCANCTRL_Mode(const INT8U newmode)
 	// This undocumented trick was found at https://github.com/mkleemann/can/blob/master/can_sleep_mcp2515.c
 	if((mcp2515_readRegister(MCP_CANSTAT) & MODE_MASK) == MCP_SLEEP && newmode != MCP_SLEEP)
 	{
+        printf("chip in sleep mode - setting wake interrupt\n");
 		// Make sure wake interrupt is enabled
-		uint8_t wakeIntEnabled = (mcp2515_readRegister(MCP_CANINTE) & MCP_WAKIF);
+		char wakeIntEnabled = (mcp2515_readRegister(MCP_CANINTE) & MCP_WAKIF);
 		if(!wakeIntEnabled)
 			mcp2515_modifyRegister(MCP_CANINTE, MCP_WAKIF, MCP_WAKIF);
 
@@ -162,7 +178,7 @@ INT8U MCP_CAN::mcp2515_setCANCTRL_Mode(const INT8U newmode)
 		// In this situation the mode needs to be manually set to LISTENONLY.
 
 		if(mcp2515_requestNewMode(MCP_LISTENONLY) != MCP2515_OK)
-            return MCP2515_FAIL;
+			return MCP2515_FAIL;
 
 		// Turn wake interrupt back off if it was originally off
 		if(!wakeIntEnabled)
@@ -181,22 +197,24 @@ INT8U MCP_CAN::mcp2515_setCANCTRL_Mode(const INT8U newmode)
 *********************************************************************************************************/
 INT8U MCP_CAN::mcp2515_requestNewMode(const INT8U newmode)
 {
-    //uint8_t startTime = esp_timer_get_time() / 1000; //this originally used millis()
-    uint64_t  startTime = esp_timer_get_time() / 1000; //this originally used millis()
+	uint64_t startTime = esp_timer_get_time();
+
 	// Spam new mode request and wait for the operation  to complete
 	while(1)
 	{
 		// Request new mode
 		// This is inside the loop as sometimes requesting the new mode once doesn't work (usually when attempting to sleep)
-		mcp2515_modifyRegister(MCP_CANCTRL, MODE_MASK, newmode); 
-
 		uint8_t statReg = mcp2515_readRegister(MCP_CANSTAT);
+        printf("statReg = %d newMode = %d \n", statReg, newmode);
+
+        mcp2515_modifyRegister(MCP_CANCTRL, MODE_MASK, newmode); 
+
+		statReg = mcp2515_readRegister(MCP_CANSTAT);
+        printf("statReg = %d newMode = %d \n", statReg, newmode);
 		if((statReg & MODE_MASK) == newmode) // We're now in the new mode
 			return MCP2515_OK;
-		else if((uint64_t)(esp_timer_get_time() / 1000 - startTime) > 200){ // Wait no more than 200ms for the operation to complete --> this originally used millis()
-            printf("too long trying...\n");
-            return MCP2515_FAIL;
-        }
+		else if((esp_timer_get_time() - startTime) > 200000) // Wait no more than 200ms for the operation to complete
+			return MCP2515_FAIL;
 	}
 }
 
@@ -534,7 +552,7 @@ INT8U MCP_CAN::mcp2515_init(const INT8U canIDMode, const INT8U canSpeed, const I
     if(res > 0)
     {
 #if DEBUG_MODE
-      printf("Entering Configuration Mode Failure %d...\n", res); 
+      printf("Entering Configuration Mode Failure...\n"); 
 #endif
       return res;
     }
@@ -603,7 +621,7 @@ INT8U MCP_CAN::mcp2515_init(const INT8U canIDMode, const INT8U canSpeed, const I
     
             default:
 #if DEBUG_MODE        
-            printf("Setting ID Mode Failure...\n");
+            printf("`Setting ID Mode Failure...\n");
 #endif           
             return MCP2515_FAIL;
             break;
@@ -785,23 +803,23 @@ INT8U MCP_CAN::mcp2515_getNextFreeTXBuf(INT8U *txbuf_n)                 /* get N
 ** Function name:           MCP_CAN
 ** Descriptions:            Public function to declare CAN class and the /CS pin.
 *********************************************************************************************************/
-//MCP_CAN::MCP_CAN(gpio_num_t _CS)
+//MCP_CAN::MCP_CAN(INT8U _CS)
 //{
-//    MCPCS = _CS;
-//    MCP2515_UNSELECT();
-//    gpio_set_direction(MCPCS, GPIO_MODE_OUTPUT);
-//    mcpSPI = &SPI;
+ //   MCPCS = _CS;
+  //  MCP2515_UNSELECT();
+  //  pinMode(MCPCS, OUTPUT);
+  //  mcpSPI = &SPI;
 //}
 
 /*********************************************************************************************************
 ** Function name:           MCP_CAN
 ** Descriptions:            Public function to declare CAN class with SPI and the /CS pin.
 *********************************************************************************************************/
-MCP_CAN::MCP_CAN(spi_device_handle_t *_SPI, gpio_num_t _CS)
+MCP_CAN::MCP_CAN(spi_device_handle_t  *_SPI, gpio_num_t _CS)
 {
     MCPCS = _CS;
     //MCP2515_UNSELECT();
-    //gpio_set_direction(MCPCS, GPIO_MODE_OUTPUT);
+    gpio_set_direction(MCPCS, GPIO_MODE_OUTPUT);
     mcpSPI = _SPI;
 }
 
@@ -813,7 +831,7 @@ INT8U MCP_CAN::begin(INT8U idmodeset, INT8U speedset, INT8U clockset)
 {
     INT8U res;
 
-    //mcpSPI->begin(); spi initialization goes here if moved to inside class
+    //spi initialization goes here if moved to class
     res = mcp2515_init(idmodeset, speedset, clockset);
     if (res == MCP2515_OK)
         return CAN_OK;
@@ -982,13 +1000,13 @@ INT8U MCP_CAN::init_Filt(INT8U num, INT32U ulData)
     INT8U ext = 0;
     
 #if DEBUG_MODE
-    printf("Starting to set filter! \n");
+    printf("Starting to Set Filter!\n");
 #endif
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0)
     {
 #if DEBUG_MODE
-      printf("Enter configuration mode failure...\n");
+      printf("Enter Configuration Mode Failure...\n"); 
 #endif
       return res;
     }
@@ -1084,7 +1102,7 @@ INT8U MCP_CAN::sendMsg()
 {
     INT8U res, res1, txbuf_n;
     uint32_t uiTimeOut, temp;
-    
+
     temp = esp_timer_get_time();
     // 24 * 4 microseconds typical
     do {
