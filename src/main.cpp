@@ -7,6 +7,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/spi_master.h"
+#include "esp_task_wdt.h"
 long unsigned int rxId;
 unsigned char len = 0;
 unsigned char rxBuf[8];
@@ -39,7 +40,6 @@ esp_err_t add_spi_device(){
     memset(&devcfg, 0, sizeof(devcfg));
     devcfg.mode = 0;
     devcfg.clock_speed_hz = 10000000;
-    //devcfg.spics_io_num = CAN0_CS;
     devcfg.spics_io_num = -1;
     devcfg.queue_size = 1;
     return spi_bus_add_device(SPI2_HOST, &devcfg, &spi2);
@@ -62,7 +62,7 @@ void app_main() {
         printf("Error initializing MCP2515! \n");
     CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
     gpio_set_direction(CAN0_INT, GPIO_MODE_INPUT);
-    
+    esp_task_wdt_deinit();
     while(1){
         if(!gpio_get_level(CAN0_INT)){                         // If CAN0_INT pin is low, read receive buffer
             CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
