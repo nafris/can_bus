@@ -20,7 +20,6 @@ INT8U spi_rx(spi_device_handle_t *spi){
     spi_transaction_t t;
     uint8_t rx_data;
     memset(&t, 0, sizeof(t));
-    t.flags = SPI_TRANS_USE_RXDATA;
     t.length = 8;
     t.rxlength = 8;
     t.rx_buffer = &rx_data;
@@ -204,13 +203,8 @@ INT8U MCP_CAN::mcp2515_requestNewMode(const INT8U newmode)
 	{
 		// Request new mode
 		// This is inside the loop as sometimes requesting the new mode once doesn't work (usually when attempting to sleep)
-		uint8_t statReg = mcp2515_readRegister(MCP_CANSTAT);
-        printf("statReg = %d newMode = %d \n", statReg, newmode);
-
-        mcp2515_modifyRegister(MCP_CANCTRL, MODE_MASK, newmode); 
-
-		statReg = mcp2515_readRegister(MCP_CANSTAT);
-        printf("statReg = %d newMode = %d \n", statReg, newmode);
+        mcp2515_modifyRegister(MCP_CANCTRL, MODE_MASK, newmode);
+		char statReg = mcp2515_readRegister(MCP_CANSTAT);
 		if((statReg & MODE_MASK) == newmode) // We're now in the new mode
 			return MCP2515_OK;
 		else if((esp_timer_get_time() - startTime) > 200000) // Wait no more than 200ms for the operation to complete
