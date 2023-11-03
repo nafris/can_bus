@@ -32,15 +32,16 @@ esp_err_t init_spi(){
     buscfg.sclk_io_num = SPI_SCK;
     buscfg.quadwp_io_num = -1;
     buscfg.quadhd_io_num = -1;
-    buscfg.max_transfer_sz = 8;
-    return spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_DISABLED);
+    buscfg.max_transfer_sz = 4092;
+    return spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
 } 
 esp_err_t add_spi_device(){
     spi_device_interface_config_t devcfg;
     memset(&devcfg, 0, sizeof(devcfg));
     devcfg.mode = 0;
     devcfg.clock_speed_hz = 10000000;
-    devcfg.spics_io_num = -1;
+    //devcfg.spics_io_num = -1;
+    devcfg.spics_io_num = CAN0_CS;
     devcfg.queue_size = 1;
     return spi_bus_add_device(SPI2_HOST, &devcfg, &spi2);
 }
@@ -55,7 +56,7 @@ void app_main() {
     ESP_ERROR_CHECK(add_spi_device());
 
     printf("MCP2515 Library Receive Example...\n");
-    
+
     if(CAN0.begin(MCP_ANY, CAN_125KBPS, MCP_8MHZ) == CAN_OK)
         printf("MCP2515 initialization successful! \n");
     else
